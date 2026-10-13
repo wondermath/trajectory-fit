@@ -130,6 +130,16 @@ td button.del:hover{color:var(--pt);background:var(--soft)}
 .fld{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 9px;width:100%;max-width:100%}
 textarea.fld{min-height:120px;resize:vertical;line-height:1.55}
 #designPanel{margin-top:18px}
+.calc-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 5px;font-family:var(--mono);font-size:15px}
+.calc-row input{width:4.8em;text-align:center;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 4px;font-family:var(--mono)}
+.calc-row input.bad{border-color:var(--warn);background:var(--warn-bg)}
+.calc-row .op{padding:0 2px;color:var(--ink2)}
+.calc-row sup{font-size:.7em}
+.calc-prev{margin-top:8px;min-height:2.6em;padding:8px 12px;background:var(--soft);border-radius:6px;font:600 21px/1.9 var(--sans);overflow-x:auto}
+.calc-prev:empty::before{content:'입력한 계수가 여기에 함수식으로 나타납니다.';font:400 13px var(--sans);color:var(--ink2)}
+.frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;font-size:.78em;line-height:1.15;margin:0 2px}
+.frac>span:first-child{border-bottom:1.6px solid currentColor;padding:0 3px}
+.calc-prev .bad{color:var(--warn)}
 #designPanel .row{align-items:center}
 textarea#tsvBox{width:100%;min-height:90px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;font-family:var(--mono);font-size:12px;resize:vertical}
 @media (prefers-reduced-motion:no-preference){.btn,.seg button{transition:background .12s,border-color .12s}}
@@ -175,7 +185,7 @@ body{margin:0}
     </div>
     <div>
       <label class="lbl" for="toolText" style="display:block;margin-bottom:6px">측정 도구 및 방법 (촬영 fps, 눈금 간격, 반복 횟수 등)</label>
-      <textarea id="toolText" class="fld" maxlength="1500" placeholder="어떤 물체를 촬영했는지, 촬영 fps, 기준 물체(눈금자 등)와 그 길이, 카메라 위치, 반복 횟수 등을 자세히 서술하세요.&#10;예) 스마트폰으로 240fps 슬로우모션 촬영, 1m 줄자를 공 옆에 세웠고 카메라는 삼각대에 고정했다. 공을 세 번 떨어뜨려 가장 깨끗한 영상을 골랐다."></textarea>
+      <textarea id="toolText" class="fld" maxlength="1500" placeholder="어떤 물체를 촬영했는지, 촬영 fps, 기준 물체(눈금자 등)와 그 길이, 카메라 위치, 반복 횟수 등을 자세히 서술하세요.&#10;예) 아이폰으로 240fps 슬로우모션 촬영, 1m 줄자를 공 옆에 세웠고 카메라는 삼각대에 고정했다. 공을 세 번 떨어뜨려 가장 깨끗한 영상을 골랐다."></textarea>
     </div>
   </section>
 
@@ -343,8 +353,10 @@ body{margin:0}
         </div>
         <div class="stats mono" id="stats"></div>
         <div id="calcBox">
-          <label class="lbl" for="calcFn" style="display:block;margin:4px 0 6px">2차시 계산용 함수 <span class="muted">(위 함수의 계수를 정수 또는 간단한 분수로 반올림해서 입력)</span></label>
-          <input id="calcFn" class="fld mono" type="text" placeholder="예: s(t) = …" maxlength="80" disabled>
+          <div class="lbl" style="margin:4px 0 6px">2차시 계산용 함수 <span class="muted">(위 함수의 계수를 정수 또는 간단한 분수로 반올림해서 칸에 입력)</span></div>
+          <div class="calc-row" id="calcRow" role="group" aria-label="2차시 계산용 함수의 계수 입력"></div>
+          <div class="calc-prev" id="calcPrev" aria-live="polite"></div>
+          <p class="warn" id="calcMsg" hidden></p>
         </div>
         <div class="row" style="margin-top:12px">
           <input id="stuId" type="text" placeholder="학번" aria-label="학번" maxlength="12" style="width:5.5em;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit"><input id="stuName" type="text" placeholder="이름" aria-label="이름" maxlength="12" style="width:5.5em;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit">
@@ -674,6 +686,7 @@ function renderChart(){
 /* ---------- 함수식, 표 ---------- */
 function renderEqs(){
   const f=S.fit, u=unit();
+  buildCalc();
   $('#eqNm').textContent='위치 함수 · 위치로 쓴 값: '+AXN[S.axis];
   if(f){
     $('#eqS').textContent='s(t) = '+termStr(f.c);
@@ -818,7 +831,7 @@ function uiState(){
   $('#drawOrigin').disabled=!toolOk('origin'); $('#startMeas').disabled=!toolOk('measure');
   $('#reset').disabled=demo;
   if(!$('#pdfMsg').dataset.busy) $('#pdf').disabled=!S.fit;
-  $('#calcFn').disabled=!S.fit; $('#calcFn').placeholder=S.fit?'예: s(t) = 계수를 간단히 한 함수식':'함수가 추정되면 입력할 수 있습니다';
+  document.querySelectorAll('#calcRow input').forEach(i=>{ i.disabled=!S.fit; });
   $('#undo').disabled=!S.hist.length;
   $('#delCur').disabled=demo||curIdx()<0;
   const hint=$('#hint'), n=S.pick?1:0;
@@ -832,6 +845,86 @@ function uiState(){
 }
 function renderAll(){ recalc(); draw(); renderChart(); renderEqs(); renderTable(); renderMeas(); renderRef(); uiState(); }
 
+/* ---------- 2차시 계산용 함수: 계수 칸 → 수식 ---------- */
+const calcVals={};
+let calcKey='';
+function parseCoef(str){
+  const t=String(str||'').trim().replace(/[−–]/g,'-').replace(/\s+/g,'');
+  if(!t) return null;
+  let m=t.match(/^([+-]?)(\d+)\/(\d+)$/);
+  if(m) return {neg:m[1]==='-',n:m[2],d:m[3],ok:+m[3]!==0};
+  m=t.match(/^([+-]?)(\d+)$/);
+  if(m) return {neg:m[1]==='-',n:m[2],d:null,ok:true};
+  return {bad:true,raw:str};
+}
+function calcTerms(){
+  const out=[];
+  for(let k=S.deg;k>=0;k--){
+    const p=parseCoef(calcVals[k]); if(!p) continue;
+    if(!p.bad&&p.ok&&+p.n===0) continue;
+    out.push({k,p});
+  }
+  return out;
+}
+function calcHasBad(){ for(let k=S.deg;k>=0;k--){ const p=parseCoef(calcVals[k]); if(p&&(p.bad||!p.ok)) return true; } return false; }
+function mkEl(tag,cls,txt){ const e=document.createElement(tag); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e; }
+function renderCalcPrev(){
+  const el=$('#calcPrev'); el.textContent='';
+  const terms=calcTerms();
+  if(!terms.length){ $('#calcMsg').hidden=!calcHasBad(); return; }
+  el.appendChild(document.createTextNode('s(t) = '));
+  terms.forEach((tm,i)=>{
+    const p=tm.p, bad=p.bad||!p.ok;
+    const neg=!bad&&p.neg;
+    if(i===0){ if(neg) el.appendChild(document.createTextNode('−')); }
+    else el.appendChild(document.createTextNode(neg?' − ':' + '));
+    if(bad){ el.appendChild(mkEl('span','bad',p.bad?p.raw:p.n+'/'+p.d)); }
+    else if(p.d){
+      const f=mkEl('span','frac'); f.appendChild(mkEl('span',null,String(+p.n))); f.appendChild(mkEl('span',null,String(+p.d))); el.appendChild(f);
+    } else if(!(tm.k>=1&&+p.n===1)) el.appendChild(document.createTextNode(String(+p.n)));
+    if(tm.k>=1) el.appendChild(document.createTextNode('t'));
+    if(tm.k>=2){ el.appendChild(mkEl('sup',null,String(tm.k))); }
+  });
+  const m=$('#calcMsg'); m.hidden=!calcHasBad(); m.textContent=calcHasBad()?'계수는 정수(예: −5) 또는 분수(예: 3/2)로 입력하세요.':'';
+}
+function buildCalc(){
+  const key=S.deg+'|'+(S.fit?1:0);
+  if(key===calcKey){ return; } calcKey=key;
+  const row=$('#calcRow'); row.textContent='';
+  row.appendChild(mkEl('span',null,'s(t) ='));
+  for(let k=S.deg;k>=0;k--){
+    if(k<S.deg) row.appendChild(mkEl('span','op','+'));
+    const inp=document.createElement('input'); inp.type='text'; inp.maxLength=12; inp.autocomplete='off'; inp.setAttribute('inputmode','text');
+    inp.setAttribute('aria-label',k>=2?k+'차 항의 계수':k===1?'1차 항의 계수':'상수항');
+    inp.placeholder=k>=2?'t'+'⁰¹²³⁴⁵'[k]+' 계수':k===1?'t 계수':'상수항'; inp.value=calcVals[k]||''; inp.disabled=!S.fit;
+    inp.addEventListener('input',()=>{ calcVals[k]=inp.value; const p=parseCoef(inp.value); inp.classList.toggle('bad',!!p&&(p.bad||!p.ok)); renderCalcPrev(); });
+    row.appendChild(inp);
+    if(k>=1){ const l=mkEl('span',null,'t'); if(k>=2) l.appendChild(mkEl('sup',null,String(k))); row.appendChild(l); }
+  }
+  renderCalcPrev();
+}
+/* 캔버스에 계산용 함수식 그리기 (분수·위첨자 포함). measure만 하면 너비를 돌려줌 */
+function drawCalcFormula(g,x,y,size,color,fam,measure){
+  const base=y+size*1.1; let cx=x;
+  const F=(sz)=>'700 '+sz+'px '+fam;
+  const put=(str,sz,dy)=>{ g.font=F(sz); const w=g.measureText(str).width; if(!measure){ g.fillStyle=color; g.textAlign='left'; g.textBaseline='alphabetic'; g.fillText(str,cx,base+dy); } cx+=w; };
+  put('s(t) = ',size,0);
+  calcTerms().forEach((tm,i)=>{
+    const p=tm.p, bad=p.bad||!p.ok, neg=!bad&&p.neg;
+    if(i===0){ if(neg) put('−',size,0); } else put(neg?' − ':' + ',size,0);
+    if(bad) put(p.bad?String(p.raw):p.n+'/'+p.d,size,0);
+    else if(p.d){
+      const fs=size*0.7, a=String(+p.n), b=String(+p.d); g.font=F(fs);
+      const w=Math.max(g.measureText(a).width,g.measureText(b).width)+8, axis=base-size*0.3;
+      if(!measure){ g.fillStyle=color; g.textAlign='center'; g.textBaseline='alphabetic'; g.fillText(a,cx+w/2,axis-size*0.12); g.fillText(b,cx+w/2,axis+size*0.58); g.fillRect(cx+1,axis-size*0.04,w-2,Math.max(2,size*0.06)); }
+      cx+=w+4;
+    } else if(!(tm.k>=1&&+p.n===1)) put(String(+p.n),size,0);
+    if(tm.k>=1) put('t',size,0);
+    if(tm.k>=2) put(String(tm.k),size*0.6,-size*0.45);
+  });
+  if(!measure) g.textBaseline='top';
+  return cx-x;
+}
 /* ---------- PDF 저장 ---------- */
 const FONT='"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif';
 function svgToImage(svg){
@@ -964,9 +1057,8 @@ async function makeReport(){
   g.strokeStyle='#bbb'; g.lineWidth=2; g.beginPath(); g.moveTo(M,y); g.lineTo(PW-M,y); g.stroke(); y+=26;
   text('2차시 계산용 함수 (계수를 정수 또는 간단한 분수로 반올림):',M,y,26,'#111',700); y+=44;
   text('위에서 구한 s(t)의 계수를 반올림하여 계산하기 쉬운 함수로 바꿔 적으세요. 3단계부터는 이 함수를 사용합니다.',M,y,22,GRAY,400,'left',SERIF,true); y+=46;
-  const cf=($('#calcFn').value||'').trim();
-  if(cf){ let cs=34; g.font=font(cs,700,SERIF); while(g.measureText(cf).width>IW&&cs>20){ cs-=2; g.font=font(cs,700,SERIF); } text(cf,M,y,cs,NAVY,700,'left',SERIF); }
-  y+=60;
+  if(calcTerms().length){ let cs=36; while(drawCalcFormula(g,M,y,cs,NAVY,SERIF,true)>IW&&cs>20) cs-=2; drawCalcFormula(g,M,y,cs,NAVY,SERIF,false); }
+  y+=84;
   // 마무리 안내 상자 (최하단)
   const note='1차시는 여기까지입니다. 2차시(3~6단계)는 스마트폰·계산기 앱·AI 도구 등 전자기기 없이 교과서와 필기구만으로 진행합니다. 위에서 반올림한 함수만 사용하며, 기본 사칙연산 계산기는 선생님 안내에 따라 허용될 수 있습니다.';
   g.font=font(23,400,SERIF); const nl=wrap(note,IW-44), nh=nl.length*36+28;
