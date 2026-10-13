@@ -43,7 +43,7 @@ h2{font-size:1rem;font-weight:600}
 @media (max-width:900px){
   .grid{display:flex;flex-direction:column}
   .col{display:contents}
-  .o1{order:1}.o2{order:2}.o3{order:3}.o4{order:4}.o5{order:5}.o6{order:6}
+  .o1{order:1}.o2{order:2}.o3{order:3}.o4{order:4}.o5{order:5}.o56{order:6}.o6{order:7}
 }
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .panel-head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
@@ -127,6 +127,10 @@ td button.lnk{background:none;border:0;padding:0;color:var(--accent);font:inheri
 td button.del{background:none;border:0;color:var(--ink2);padding:2px 8px;font-size:16px;line-height:1;border-radius:4px}
 td button.del:hover{color:var(--pt);background:var(--soft)}
 .limit-note{font-size:12px;color:var(--ink2)}
+.fld{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 9px;width:100%;max-width:100%}
+textarea.fld{min-height:120px;resize:vertical;line-height:1.55}
+#designPanel{margin-top:18px}
+#designPanel .row{align-items:center}
 textarea#tsvBox{width:100%;min-height:90px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;font-family:var(--mono);font-size:12px;resize:vertical}
 @media (prefers-reduced-motion:no-preference){.btn,.seg button{transition:background .12s,border-color .12s}}
 html{color-scheme:light}
@@ -156,12 +160,31 @@ body{margin:0}
     <li data-s="4">점 찍기·길이 재기</li>
   </ol>
 
+  <section class="panel" id="designPanel" aria-label="실험 설계">
+    <h2>1 실험 설계</h2>
+    <div class="row">
+      <label class="lbl" for="expSel">선택한 실험</label>
+      <select id="expSel">
+        <option value="">선택하세요</option>
+        <option value="낙하">자유낙하: 물체를 떨어뜨리며 촬영</option>
+        <option value="던지기">자유낙하: 물체를 위로 던지며 촬영</option>
+        <option value="경사면">경사면 굴리기: 판자 위에서 구슬/공을 굴리며 구간별 통과시간 측정</option>
+        <option value="기타">기타 (직접 제안)</option>
+      </select>
+      <input id="expOther" class="fld" type="text" placeholder="기타: 선생님께 승인받은 실험을 적으세요" aria-label="기타 실험" maxlength="80" hidden style="flex:1 1 220px;width:auto">
+    </div>
+    <div>
+      <label class="lbl" for="toolText" style="display:block;margin-bottom:6px">측정 도구 및 방법 (촬영 fps, 눈금 간격, 반복 횟수 등)</label>
+      <textarea id="toolText" class="fld" maxlength="1500" placeholder="어떤 물체를 촬영했는지, 촬영 fps, 기준 물체(눈금자 등)와 그 길이, 카메라 위치, 반복 횟수 등을 자세히 서술하세요.&#10;예) 아이폰으로 240fps 슬로우모션 촬영, 1m 줄자를 공 옆에 세웠고 카메라는 삼각대에 고정했다. 공을 세 번 떨어뜨려 가장 깨끗한 영상을 골랐다."></textarea>
+    </div>
+  </section>
+
   <div class="grid">
     <div class="col">
       <section class="panel o2 demo-mode" id="stagePanel" aria-label="영상 스테이지">
         <div class="panel-head">
           <h2>영상</h2>
-          <span class="badge demo" id="modeBadge">예시 데이터</span>
+          <span class="badge demo" id="modeBadge">기본 세팅</span>
         </div>
         <div class="stage" id="stageBox"><canvas id="stage" width="640" height="360" aria-label="영상 화면. 클릭해서 기준선, 원점, 점을 찍습니다."></canvas></div>
         <p class="hint" id="hint"></p>
@@ -306,12 +329,28 @@ body{margin:0}
         <p class="warn" id="warn" hidden></p>
       </section>
 
+      <section class="panel o56" aria-label="기본 세팅">
+        <div class="row">
+          <button class="btn" id="useDefault" type="button" title="영상 촬영이 어려울 때 선생님이 제공한 표준 측정 데이터로 과제를 진행합니다.">기본 세팅 사용</button>
+          <span class="muted" id="defaultMsg" role="status" aria-live="polite">영상 촬영이 어려운 경우: 표준 측정 데이터와 실험 설계 기본 내용으로 진행합니다.</span>
+        </div>
+      </section>
+
       <section class="panel o6" aria-label="추정한 함수">
         <h2>추정한 함수</h2>
         <div class="eqs">
           <div class="eq"><span class="nm" id="eqNm">위치 함수</span><span class="fx" id="eqS"></span></div>
         </div>
         <div class="stats mono" id="stats"></div>
+        <div id="calcBox">
+          <label class="lbl" for="calcFn" style="display:block;margin:4px 0 6px">2차시 계산용 함수 <span class="muted">(위 함수의 계수를 정수 또는 간단한 분수로 반올림해서 입력)</span></label>
+          <input id="calcFn" class="fld mono" type="text" placeholder="예: s(t) = …" maxlength="80" disabled>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <input id="stuId" type="text" placeholder="학번" aria-label="학번" maxlength="12" style="width:5.5em;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit"><input id="stuName" type="text" placeholder="이름" aria-label="이름" maxlength="12" style="width:5.5em;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit">
+          <button class="btn primary" id="pdf" type="button" disabled title="함수가 추정되면 지금 화면의 결과를 PDF 파일로 저장합니다.">PDF로 저장</button>
+          <span class="muted" id="pdfMsg" role="status" aria-live="polite"></span>
+        </div>
       </section>
     </div>
   </div>
@@ -415,19 +454,15 @@ function fmtT(t){ return S.speed===1?t.toFixed(2):t.toFixed(3); }
 function refOf(k){ return REFS.find(r=>r.k===k)||null; }
 function refName(){ const r=refOf(S.refKey); return r?(r.k==='custom'?'기준선':r.n):'기준선'; }
 
-/* ---------- 예시 데이터: 키 1.70 m 사람을 기준으로 잰, 위로 던진 공 (y = 1.2 + 4.5t − 4.9t², x = 3t) ---------- */
+/* ---------- 기본 세팅(표준 측정 데이터): 교사 제공 값(t, x, y)을 50 cm 자 기준 좌표로 둔 떨어지는 공 ---------- */
 function loadDemo(){
   S.mode='demo'; S.W=640; S.H=360; S.step=0.1; S.t0=0; S.cur=0; S.dur=0;
-  S.refKey='person'; S.hist=[]; S.measures=[];
+  S.refKey='ruler50'; S.hist=[]; S.measures=[];
   S.origin={x:60,y:320};
-  S.scale={a:{x:540,y:320},b:{x:540,y:150},len:1.7,key:'person'};
+  S.scale={a:{x:540,y:320},b:{x:540,y:270},len:0.5,key:'ruler50'};
   S.pick=null; S.tool='point'; S.axis='y'; S.deg=2;
-  const noise=[0.02,-0.03,0.01,0.03,-0.02,0,0.03,-0.02,-0.01,0.02,-0.03];
-  S.pts=[];
-  for(let i=0;i<=10;i++){
-    const t=i/10, x=3*t, y=1.2+4.5*t-4.9*t*t+noise[i];
-    S.pts.push({ct:t,px:60+x/0.01,py:320-y/0.01});
-  }
+  const DATA=[[0,0.6590,1.7215],[0.1375,0.6647,1.6363],[0.1875,0.6818,1.5567],[0.2375,0.6590,1.4147],[0.2875,0.6363,1.2670],[0.3375,0.6363,1.0965],[0.3875,0.6420,0.8352],[0.4375,0.6477,0.5284],[0.4875,0.6477,0.3182],[0.5375,0.6590,0.0795],[0.5875,0.6477,-0.0455]];
+  S.pts=DATA.map(r=>({ct:r[0],px:60+r[1]/0.01,py:320-r[2]/0.01}));
 }
 
 /* ---------- 좌표 변환 ---------- */
@@ -505,13 +540,11 @@ function drawDemoBg(ctx,f){
   for(let x=0;x<=S.W;x+=40){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,S.H); ctx.stroke(); }
   for(let y=0;y<=S.H;y+=40){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(S.W,y); ctx.stroke(); }
   ctx.fillStyle='#9db2bf'; ctx.fillRect(0,320,S.W,40);
-  // 기준이 되는 사람 (키 170 px = 1.70 m)
-  ctx.strokeStyle='#41606f'; ctx.fillStyle='#41606f'; ctx.lineWidth=4; ctx.lineCap='round';
-  ctx.beginPath(); ctx.arc(540,164,14,0,6.2832); ctx.fill();
-  [[540,178,540,260],[540,260,526,320],[540,260,554,320],[540,196,520,240],[540,196,560,240]].forEach(l=>{ ctx.beginPath(); ctx.moveTo(l[0],l[1]); ctx.lineTo(l[2],l[3]); ctx.stroke(); });
-  ctx.lineCap='butt';
+  // 기준이 되는 50 cm 자 (50 px = 0.50 m)
+  ctx.fillStyle='#f2d98a'; ctx.fillRect(533,270,14,50); ctx.strokeStyle='#6b5a1e'; ctx.lineWidth=1.5; ctx.strokeRect(533,270,14,50);
+  for(let i=1;i<5;i++){ ctx.beginPath(); ctx.moveTo(533,270+i*10); ctx.lineTo(i%1===0?541:538,270+i*10); ctx.stroke(); }
   ctx.fillStyle='#41606f'; ctx.font='600 '+(13*f)+'px sans-serif'; ctx.textBaseline='top'; ctx.textAlign='left';
-  ctx.fillText('예시 장면: 키 1.70 m인 사람을 기준으로 잰 공의 운동',12*f,10*f);
+  ctx.fillText('기본 세팅 장면: 50 cm 자를 기준으로 잰 떨어지는 공',12*f,10*f);
   if(S.pts.length){
     const p=S.pts[0]; ctx.beginPath(); ctx.arc(p.px,p.py,10,0,6.2832); ctx.fillStyle='#f2a541'; ctx.fill();
   }
@@ -759,8 +792,8 @@ function renderFlow(){
 function pressed(sel,key,val){ document.querySelectorAll(sel+' button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset[key]===String(val)))); }
 function timeUI(){
   const tr=$('#time'), demo=S.mode==='demo';
-  tr.max=demo?1:(S.dur||0); tr.step=S.step; tr.value=S.cur;
-  $('#timeOut').textContent=demo?'t = 0.0 ~ 1.0 s (예시 데이터)':'영상 '+S.cur.toFixed(2)+' s · 실제 t = '+fmtT(realT(S.cur))+' s';
+  tr.max=demo?0.6:(S.dur||0); tr.step=S.step; tr.value=S.cur;
+  $('#timeOut').textContent=demo?'t = 0.0 ~ 0.6 s (기본 세팅 데이터)':'영상 '+S.cur.toFixed(2)+' s · 실제 t = '+fmtT(realT(S.cur))+' s';
 }
 function toolOk(t){
   if(S.mode!=='video') return true;
@@ -778,16 +811,18 @@ function uiState(){
   fixTool();
   $('#stagePanel').classList.toggle('demo-mode',demo);
   $('#ctl').inert=demo; $('#refCtl').inert=demo; $('#measCtl').inert=demo;
-  const bd=$('#modeBadge'); bd.textContent=demo?'예시 데이터':'내 영상'; bd.className='badge'+(demo?' demo':'');
+  const bd=$('#modeBadge'); bd.textContent=demo?'기본 세팅':'내 영상'; bd.className='badge'+(demo?' demo':'');
   pressed('#toolSeg','tool',S.tool); pressed('#axisSeg','axis',S.axis); pressed('#degSeg','deg',S.deg); pressed('#stepSeg','step',S.step); pressed('#speedSeg','speed',S.speed);
   document.querySelectorAll('#toolSeg button').forEach(b=>{ b.disabled=!toolOk(b.dataset.tool); });
   $('#drawRef').disabled=!S.refKey||!(parseFloat($('#refLen').value)>0);
   $('#drawOrigin').disabled=!toolOk('origin'); $('#startMeas').disabled=!toolOk('measure');
   $('#reset').disabled=demo;
+  if(!$('#pdfMsg').dataset.busy) $('#pdf').disabled=!S.fit;
+  $('#calcFn').disabled=!S.fit; $('#calcFn').placeholder=S.fit?'예: s(t) = 계수를 간단히 한 함수식':'함수가 추정되면 입력할 수 있습니다';
   $('#undo').disabled=!S.hist.length;
   $('#delCur').disabled=demo||curIdx()<0;
   const hint=$('#hint'), n=S.pick?1:0;
-  if(demo) hint.textContent='예시 장면입니다. 영상을 불러오거나 이 영역으로 끌어다 놓으면 직접 측정할 수 있습니다.';
+  if(demo) hint.textContent='기본 세팅 장면입니다. 영상을 불러오거나 이 영역으로 끌어다 놓으면 직접 측정할 수 있습니다.';
   else if(!S.refKey) hint.textContent='먼저 오른쪽 위(모바일에서는 위쪽)의 「기준 물체와 길이」에서 영상에 찍힌 기준 물체를 고르세요. 기준을 정해야 점을 찍을 수 있습니다.';
   else if(S.tool==='scale') hint.textContent='기준 물체의 양 끝을 차례로 클릭하세요 ('+n+'/2). 지금 고른 기준: '+refName()+' '+fmtLen(parseFloat($('#refLen').value)/100||0.01)+'.';
   else if(S.tool==='origin') hint.textContent='위치를 재는 기준이 될 원점을 클릭하세요. 바닥이나 출발점이 좋습니다.';
@@ -796,6 +831,184 @@ function uiState(){
   timeUI();
 }
 function renderAll(){ recalc(); draw(); renderChart(); renderEqs(); renderTable(); renderMeas(); renderRef(); uiState(); }
+
+/* ---------- PDF 저장 ---------- */
+const FONT='"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif';
+function svgToImage(svg){
+  return new Promise((res,rej)=>{
+    const c=svg.cloneNode(true);
+    c.querySelectorAll('.g-guide,.g-dot').forEach(e=>e.remove());
+    const st=document.createElementNS(NS,'style');
+    st.textContent='.g-grid{stroke:#e4ebf0;stroke-width:1}.g-axis{stroke:#52687a;stroke-width:1}.g-zero{stroke:#52687a;stroke-width:1;stroke-dasharray:4 3;opacity:.7}'
+      +'.g-tick{fill:#52687a;font:11px monospace}.g-curve{stroke:#0a6f8c;fill:none;stroke-width:2.4;stroke-linejoin:round}.g-pt{fill:#d92d5a;stroke:#fff;stroke-width:1.5}.g-msg{fill:#52687a;font-size:13px}';
+    c.insertBefore(st,c.firstChild);
+    c.setAttribute('xmlns',NS);
+    const w=+svg.getAttribute('width'), h=+svg.getAttribute('height');
+    const img=new Image();
+    img.onload=()=>res({img,w,h}); img.onerror=()=>rej(new Error('그래프 변환 실패'));
+    img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(c));
+  });
+}
+function canvasJpeg(c){
+  return new Promise((res,rej)=>c.toBlob(b=>b?b.arrayBuffer().then(res,rej):rej(new Error('이미지 변환 실패')),'image/jpeg',0.92));
+}
+/* JPEG 쪽들을 A4 PDF로 묶기 (외부 라이브러리 없음) */
+function buildPdf(pages){
+  const enc=new TextEncoder(), parts=[], offs=[]; let len=0;
+  const push=x=>{ const u=typeof x==='string'?enc.encode(x):new Uint8Array(x); parts.push(u); len+=u.length; };
+  const obj=(n,body)=>{ offs[n]=len; push(n+' 0 obj\n'); push(body); push('\nendobj\n'); };
+  const N=pages.length, kids=[]; 
+  push('%PDF-1.4\n');
+  obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
+  for(let i=0;i<N;i++) kids.push((3+i*3)+' 0 R');
+  obj(2,'<< /Type /Pages /Kids ['+kids.join(' ')+'] /Count '+N+' >>');
+  pages.forEach((pg,i)=>{
+    const a=3+i*3, cn=a+1, im=a+2, ct='q 595.28 0 0 841.89 0 0 cm /Im0 Do Q';
+    obj(a,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /XObject << /Im0 '+im+' 0 R >> >> /Contents '+cn+' 0 R >>');
+    obj(cn,'<< /Length '+ct.length+' >>\nstream\n'+ct+'\nendstream');
+    offs[im]=len; push(im+' 0 obj\n'); push('<< /Type /XObject /Subtype /Image /Width '+pg.w+' /Height '+pg.h+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+pg.data.byteLength+' >>\nstream\n');
+    push(pg.data); push('\nendstream\nendobj\n');
+  });
+  const total=3+N*3, xr=len;
+  push('xref\n0 '+total+'\n0000000000 65535 f \n');
+  for(let i=1;i<total;i++) push(String(offs[i]).padStart(10,'0')+' 00000 n \n');
+  push('trailer\n<< /Size '+total+' /Root 1 0 R >>\nstartxref\n'+xr+'\n%%EOF\n');
+  return new Blob(parts,{type:'application/pdf'});
+}
+async function makeReport(){
+  const PW=1240, PH=1754, M=100, IW=PW-2*M, NAVY='#1f3864', SOFT='#e9f0fb', GRAY='#6b6b6b';
+  const SERIF='"Noto Serif KR","Batang","AppleMyungjo","Nanum Myeongjo",serif';
+  const pages=[]; let c, g, y;
+  const font=(sz,w,fam,it)=>(it?'italic ':'')+(w||400)+' '+sz+'px '+(fam||FONT);
+  const text=(t,x,yy,sz,color,w,align,fam,it)=>{ g.font=font(sz,w,fam,it); g.fillStyle=color||'#111'; g.textAlign=align||'left'; g.fillText(t,x,yy); };
+  const wrap=(t,w)=>{
+    const out=[]; let ln='';
+    t.split(/(?<= )/).forEach(word=>{
+      if(g.measureText((ln+word).trimEnd()).width<=w){ ln+=word; return; }
+      if(ln){ out.push(ln.trimEnd()); ln=''; }
+      if(g.measureText(word.trimEnd()).width<=w){ ln=word; return; }
+      for(const ch of word){ if(g.measureText(ln+ch).width>w&&ln){ out.push(ln); ln=''; } ln+=ch; }
+    });
+    if(ln.trim()) out.push(ln.trimEnd()); return out;
+  };
+  const newPage=()=>{
+    c=document.createElement('canvas'); c.width=PW; c.height=PH; g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,PW,PH); g.textBaseline='top';
+    pages.push(c); text('미적분Ⅰ 수행평가 활동지',PW-M,52,19,GRAY,400,'right'); y=84;
+  };
+  const bar=(num,title,right)=>{
+    g.fillStyle=SOFT; g.fillRect(M,y,IW,66); g.fillStyle=NAVY; g.fillRect(M,y,76,66);
+    g.strokeStyle=NAVY; g.lineWidth=2; g.strokeRect(M,y,IW,66);
+    text(num,M+38,y+16,32,'#fff',700,'center'); text(title,M+104,y+15,32,NAVY,700);
+    if(right) text(right,PW-M-18,y+19,28,'#111',700,'right'); y+=66+26;
+  };
+  const u=unit(), f=S.fit, k=u==='m'?100:1, su=u==='m'?'cm':'px', d=S.data.slice().sort((a,b)=>a.t-b.t);
+  const id=($('#stuId').value||'').trim(), nm=($('#stuName').value||'').trim();
+
+  /* ===== 1쪽: 실험 설계 ===== */
+  newPage();
+  g.fillStyle=SOFT; g.fillRect(M,y,IW,64); g.strokeStyle=NAVY; g.lineWidth=2; g.strokeRect(M,y,IW,64);
+  text('학번: '+(id||'________')+'      이름: '+(nm||'________'),M+22,y+17,28,'#111',700);
+  text('/  수행 영역 80점 (기본점수 20점 별도)',PW-M-18,y+19,25,'#111',400,'right'); y+=64+34;
+  bar('1','실험 설계','');
+  text('선택한 실험의 종류와 측정 도구·방법을 적은 내용입니다.',M,y,23,GRAY,400,'left',SERIF,true); y+=46;
+  const exp=$('#expSel').value, other=($('#expOther').value||'').trim();
+  const EXPS=[['낙하','자유낙하: 물체를 떨어뜨리며 촬영'],['던지기','자유낙하: 물체를 위로 던지며 촬영'],['경사면','경사면 굴리기: 판자 위에서 구슬/공을 굴리며 구간별 통과시간 측정'],['기타','기타 (직접 제안): '+(exp==='기타'&&other?other:'______________')]];
+  EXPS.forEach(o=>{
+    g.strokeStyle='#333'; g.lineWidth=2; g.strokeRect(M+8,y+3,24,24);
+    if(exp===o[0]){ g.strokeStyle=NAVY; g.lineWidth=4; g.beginPath(); g.moveTo(M+12,y+16); g.lineTo(M+19,y+25); g.lineTo(M+31,y-2); g.stroke(); }
+    text(o[1],M+50,y,25,'#111',exp===o[0]?700:400,'left',SERIF); y+=46;
+  });
+  y+=14; g.strokeStyle='#bbb'; g.lineWidth=2; g.beginPath(); g.moveTo(M,y); g.lineTo(PW-M,y); g.stroke(); y+=26;
+  const expLab=exp==='기타'?(other||'기타'):((EXPS.find(o=>o[0]===exp)||[0,''])[1]);
+  { g.font=font(27,700); const el=wrap('선택한 실험:  '+expLab,IW); el.forEach(l=>{ text(l,M,y,27,'#111',700); y+=40; }); y+=24; }
+  g.strokeStyle='#bbb'; g.beginPath(); g.moveTo(M,y); g.lineTo(PW-M,y); g.stroke(); y+=26;
+  text('측정 도구 및 방법 (촬영 fps, 눈금 간격, 반복 횟수 등):',M,y,27,'#111',700); y+=50;
+  g.font=font(25,400,SERIF);
+  const tl=[]; ($('#toolText').value||'').split('\n').forEach(par=>{ if(!par.trim()){ tl.push(''); return; } wrap(par,IW).forEach(l=>tl.push(l)); });
+  for(const l of tl){ if(y+40>PH-110){ newPage(); } text(l,M,y,25,'#111',400,'left',SERIF); y+=40; }
+
+  /* ===== 다음 쪽: 활동지 2단계 ===== */
+  newPage();
+  bar('2','데이터 수집 및 함수 모델링','/ 12점');
+  text('2-1. 데이터 수집',M,y,32,'#333',700); y+=52;
+  const bits=[]; bits.push(S.mode==='demo'?'기본 세팅(표준 측정 데이터)입니다.':'영상에서 측정한 (시간, 위치) 데이터입니다.');
+  bits.push('기준: '+(S.scale?refName()+' '+fmtLen(S.scale.len):'없음 (단위: 픽셀)'));
+  bits.push('위치: '+AXN[S.axis]);
+  if(S.speed!==1) bits.push('영상 배속 ×'+fmt(S.speed,3));
+  g.font=font(23,400,SERIF,true); wrap(bits.join(' · '),IW).forEach(l=>{ text(l,M,y,23,GRAY,400,'left',SERIF,true); y+=34; }); y+=16;
+
+  const RH=56, cx=[M+IW*0.33,M+IW*0.665];
+  const thead=()=>{
+    g.fillStyle=NAVY; g.fillRect(M,y,IW,RH-8);
+    text('시간 t (초)',M+IW*0.165,y+10,25,'#fff',700,'center'); text('위치 s ('+su+')',M+IW*0.5,y+10,25,'#fff',700,'center'); text('비고',M+IW*0.83,y+10,25,'#fff',700,'center'); y+=RH-8;
+  };
+  const trow=(t,v)=>{
+    g.strokeStyle='#444'; g.lineWidth=1.5; g.strokeRect(M,y,IW,RH); g.beginPath(); g.moveTo(cx[0],y); g.lineTo(cx[0],y+RH); g.moveTo(cx[1],y); g.lineTo(cx[1],y+RH); g.stroke();
+    if(t!=null){ text(t,M+IW*0.165,y+13,26,'#111',400,'center',SERIF); text(v,M+IW*0.5,y+13,26,'#111',400,'center',SERIF); }
+    y+=RH;
+  };
+  thead();
+  const total=Math.max(10,d.length);
+  for(let i=0;i<total;i++){
+    if(y+RH>PH-120){ newPage(); thead(); }
+    const q=d[i]; q?trow(fmtT(q.t),(q.s*k).toFixed(1)):trow(null);
+  }
+  y+=44;
+  if(y+420>PH-120){ newPage(); }
+  text('2-2. 함수 모델링(다항식 회귀)',M,y,29,'#222',700); y+=48;
+  text('영상 분석으로 얻은 데이터에 '+S.deg+'차 다항식 회귀를 한 결과입니다.',M,y,23,GRAY,400,'left',SERIF,true); y+=44;
+  const eq='s(t) = '+termStr(f.c.map(v=>v*k));
+  let fs=34; g.font=font(fs,700,SERIF); while(g.measureText('위치함수  '+eq).width>IW&&fs>20){ fs-=2; g.font=font(fs,700,SERIF); }
+  text('위치함수  '+eq,M,y,fs,'#111',700,'left',SERIF); y+=fs+14;
+  text('R² = '+fmt(f.r2,4)+'      t: 초, s: '+su,M,y,22,GRAY,400,'left',SERIF); y+=50;
+  g.strokeStyle='#bbb'; g.lineWidth=2; g.beginPath(); g.moveTo(M,y); g.lineTo(PW-M,y); g.stroke(); y+=26;
+  text('2차시 계산용 함수 (계수를 정수 또는 간단한 분수로 반올림):',M,y,26,'#111',700); y+=44;
+  text('위에서 구한 s(t)의 계수를 반올림하여 계산하기 쉬운 함수로 바꿔 적으세요. 3단계부터는 이 함수를 사용합니다.',M,y,22,GRAY,400,'left',SERIF,true); y+=46;
+  const cf=($('#calcFn').value||'').trim();
+  if(cf){ let cs=34; g.font=font(cs,700,SERIF); while(g.measureText(cf).width>IW&&cs>20){ cs-=2; g.font=font(cs,700,SERIF); } text(cf,M,y,cs,NAVY,700,'left',SERIF); }
+  y+=60;
+  // 마무리 안내 상자 (최하단)
+  const note='1차시는 여기까지입니다. 2차시(3~6단계)는 스마트폰·계산기 앱·AI 도구 등 전자기기 없이 교과서와 필기구만으로 진행합니다. 위에서 반올림한 함수만 사용하며, 기본 사칙연산 계산기는 선생님 안내에 따라 허용될 수 있습니다.';
+  g.font=font(23,400,SERIF); const nl=wrap(note,IW-44), nh=nl.length*36+28;
+  if(y+nh+70>PH-60){ newPage(); }
+  const ny=PH-100-nh; g.fillStyle='#fff8dc'; g.fillRect(M,ny,IW,nh); g.strokeStyle='#e0b000'; g.lineWidth=2; g.strokeRect(M,ny,IW,nh);
+  nl.forEach((l,i)=>text(l,M+22,ny+16+i*36,23,'#111',400,'left',SERIF));
+
+  /* ===== 첨부: 영상 장면과 그래프 ===== */
+  newPage();
+  bar('첨','영상 장면과 위치함수 그래프','');
+  const st=$('#stage'), sw=Math.min(IW,Math.round(560*st.width/st.height)), sh=Math.round(sw*st.height/st.width), sx=M+Math.round((IW-sw)/2);
+  g.drawImage(st,sx,y,sw,sh); g.strokeStyle='#999'; g.lineWidth=2; g.strokeRect(sx,y,sw,sh); y+=sh+16;
+  text('찍은 점과 기준선이 표시된 영상 장면',PW/2,y,22,GRAY,400,'center',SERIF,true); y+=54;
+  const ch=await svgToImage($('#chart')), cw=IW, chh=Math.round(cw*ch.h/ch.w);
+  g.drawImage(ch.img,M,y,cw,chh); y+=chh+14;
+  text('그래프의 위치(s) 단위는 '+u+' 입니다.'+(u==='m'?' (위 표와 함수식은 cm)':''),PW/2,y,22,GRAY,400,'center',SERIF,true);
+  // 쪽 번호
+  pages.forEach((cv,i)=>{ const cg=cv.getContext('2d'); cg.textBaseline='top'; cg.textAlign='center'; cg.fillStyle='#999'; cg.font='400 21px '+SERIF; cg.fillText('- '+(i+1)+' -',PW/2,PH-62); });
+  const out=[];
+  for(const cv of pages) out.push({w:PW,h:PH,data:await canvasJpeg(cv)});
+  return buildPdf(out);
+}
+async function savePdf(){
+  const b=$('#pdf'), msg=$('#pdfMsg');
+  if(!S.fit) return;
+  b.disabled=true; msg.textContent='PDF를 만드는 중…';
+  try{
+    const blob=await makeReport(), name='trajectory-result.pdf';
+    let dl=null;
+    try{ dl=(window.claude&&typeof window.claude.use==='function')?await window.claude.use('downloads'):null; }catch(e){ dl=null; }
+    if(dl){
+      try{ await dl.save({filename:name,data:blob}); msg.textContent='PDF를 저장했습니다.'; }
+      catch(e){ msg.textContent=(e&&e.code==='declined')?'저장을 취소했습니다.':'이 화면에서는 저장할 수 없습니다. 주소를 새 탭으로 열어 다시 시도하세요.'; }
+    } else {
+      const url=URL.createObjectURL(blob), a=document.createElement('a');
+      a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),30000);
+      msg.textContent='PDF를 저장했습니다. (다운로드 폴더를 확인하세요)';
+    }
+  }catch(e){ msg.textContent='PDF를 만들지 못했습니다: '+(e&&e.message||e); }
+  b.disabled=!S.fit;
+}
 
 /* ---------- 영상 ---------- */
 function showNotice(msg){ const n=$('#notice'); n.hidden=!msg; n.textContent=msg||''; }
@@ -889,6 +1102,27 @@ bindSeg('#speedSeg','speed',v=>{ S.speed=+v; $('#speed').value=v; renderAll(); }
 $('#speed').addEventListener('input',e=>{ const v=parseFloat(e.target.value); if(v>0){ S.speed=v; renderAll(); } });
 $('#drawRef').addEventListener('click',()=>{ setTool('scale'); $('#stageBox').scrollIntoView({block:'nearest'}); });
 $('#drawOrigin').addEventListener('click',()=>setTool('origin'));
+$('#pdf').addEventListener('click',savePdf);
+let defArm=false, defTimer=0;
+$('#useDefault').addEventListener('click',()=>{
+  const msg=$('#defaultMsg'), btn=$('#useDefault');
+  if(S.mode==='video'&&(S.pts.length||S.scale)&&!defArm){
+    defArm=true; btn.textContent='지금 작업이 사라집니다. 한 번 더 누르세요'; clearTimeout(defTimer);
+    defTimer=setTimeout(()=>{ defArm=false; btn.textContent='기본 세팅 사용'; },4000); return;
+  }
+  clearTimeout(defTimer); defArm=false; btn.textContent='기본 세팅 사용';
+  const oldUrl=S.url, oldVideo=S.video;
+  S.video=null; S.url=null; $('#speed').value=1; S.speed=1; S.auto=false;
+  loadDemo();
+  if(oldUrl) URL.revokeObjectURL(oldUrl);
+  if(oldVideo&&oldVideo.parentNode) oldVideo.parentNode.removeChild(oldVideo);
+  syncRefUI(); showNotice('');
+  $('#expSel').value='낙하'; $('#expOther').hidden=true; $('#expOther').value='';
+  $('#toolText').value='스마트폰 촬영이 어려워 선생님이 제공한 표준 측정 데이터(기본 세팅)로 과제를 수행했다. 50cm인 자를 기준 물체로 삼아 떨어지는 공의 위치를 11번 측정한 값이며, 위치는 세로 방향(y)으로 잰 값이다.';
+  renderAll();
+  msg.textContent='기본 세팅을 적용했습니다. 실험 설계가 채워졌고, 표준 측정 데이터의 함수가 추정되었습니다.';
+});
+$('#expSel').addEventListener('change',()=>{ $('#expOther').hidden=$('#expSel').value!=='기타'; });
 $('#startMeas').addEventListener('click',()=>setTool('measure'));
 $('#refSel').addEventListener('change',e=>{
   S.refKey=e.target.value;
@@ -943,7 +1177,7 @@ $('#reset').addEventListener('click',()=>{
 let clearTimer=null;
 $('#clear').addEventListener('click',()=>{
   const b=$('#clear');
-  if(S.mode!=='video'){ showNotice('예시 데이터는 지울 수 없습니다. 영상을 불러오면 직접 찍은 점으로 바뀝니다.'); setTimeout(()=>showNotice(''),3500); return; }
+  if(S.mode!=='video'){ showNotice('기본 세팅 데이터는 지울 수 없습니다. 영상을 불러오면 직접 찍은 점으로 바뀝니다.'); setTimeout(()=>showNotice(''),3500); return; }
   if(b.dataset.armed){ clearTimeout(clearTimer); delete b.dataset.armed; b.textContent='점 모두 지우기'; snap(); S.pts=[]; S.measures=[]; renderAll(); return; }
   b.dataset.armed='1'; b.textContent='정말 지울까요?';
   clearTimer=setTimeout(()=>{ delete b.dataset.armed; b.textContent='점 모두 지우기'; },3000);
