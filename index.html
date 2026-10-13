@@ -45,7 +45,7 @@ h2{font-size:1rem;font-weight:600}
   .col{display:contents}
   .o1{order:1}.o2{order:2}.o3{order:3}.o4{order:4}.o5{order:5}.o56{order:6}.o6{order:7}
 }
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel{box-sizing:border-box;max-width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .panel-head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
 .row{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center}
 .lbl{color:var(--ink2);font-size:12px;min-width:5.6em}
@@ -249,7 +249,17 @@ body{margin:0}
             <input id="speed" type="number" min="0" step="any" value="1">
             <span class="muted">배속</span>
           </div>
-          <p class="limit-note">슬로모션으로 재생되는 영상이면 실제 속도에 맞게 입력하세요. 4배 느린 영상은 0.25, 8배 느린 영상은 0.125이고, 실제 속도의 영상은 1입니다. 그래프와 함수의 t는 실제 시간으로 계산됩니다.</p>
+          <p class="limit-note">영상이 슬로모션이면 영상 속 시간이 실제보다 길게 늘어나 있습니다. 배속을 입력하면 그래프와 함수의 t가 실제 시간으로 계산됩니다. 일반 영상은 1 그대로 두세요.</p>
+          <details class="guide">
+            <summary>배속이 무엇이고 어떻게 정하나요?</summary>
+            <ul>
+              <li><b>뜻:</b> 영상 속 시간 1초가 실제로는 몇 초였는지를 나타내는 수입니다. 실제보다 4배 느리게 보이는 영상은 0.25, 8배 느리게 보이는 영상은 0.125입니다. 일반 영상은 1입니다.</li>
+              <li><b>정하는 식:</b> 배속 = 재생 fps ÷ 촬영 fps. 보통 영상은 초당 30프레임으로 재생되므로, 240fps 슬로모션은 30 ÷ 240 = 0.125, 120fps는 30 ÷ 120 = 0.25, 60fps는 30 ÷ 60 = 0.5입니다.</li>
+              <li><b>촬영 fps 확인:</b> 촬영할 때 카메라 앱에 표시된 슬로모션 설정(240, 120 등)을 보세요. 영상 파일의 상세 정보에서 프레임 속도를 볼 수도 있습니다.</li>
+              <li><b>확인 방법:</b> 촬영할 때 같은 동작이 실제로 몇 초 걸리는지 스톱워치로 재 두면, 영상에서 걸리는 시간과 비교해 배속을 확인할 수 있습니다. 영상에서 8초 걸린 동작이 실제로 1초였다면 0.125입니다.</li>
+              <li><b>주의:</b> 함수 결과가 마음에 들도록 배속을 이리저리 바꾸지 마세요. 배속은 촬영 설정에서 정해지는 값입니다. 입력한 배속은 PDF에도 표시됩니다.</li>
+            </ul>
+          </details>
           <label class="chk"><input type="checkbox" id="auto" checked> 점을 찍으면 다음 장면으로 이동</label>
         </div>
       </section>
