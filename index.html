@@ -185,7 +185,7 @@ body{margin:0}
     </div>
     <div>
       <label class="lbl" for="toolText" style="display:block;margin-bottom:6px">측정 도구 및 방법 (촬영 fps, 눈금 간격, 반복 횟수 등)</label>
-      <textarea id="toolText" class="fld" maxlength="1500" placeholder="어떤 물체를 촬영했는지, 촬영 fps, 기준 물체(눈금자 등)와 그 길이, 카메라 위치, 반복 횟수 등을 자세히 서술하세요.&#10;예) 아이폰으로 240fps 슬로우모션 촬영, 1m 줄자를 공 옆에 세웠고 카메라는 삼각대에 고정했다. 공을 세 번 떨어뜨려 가장 깨끗한 영상을 골랐다."></textarea>
+      <textarea id="toolText" class="fld" maxlength="1500" placeholder="어떤 물체를 촬영했는지, 촬영 fps, 기준 물체(눈금자 등)와 그 길이, 카메라 위치, 반복 횟수 등을 자세히 서술하세요.&#10;예) 스마트폰으로 240fps 슬로우모션 촬영, 1m 줄자를 공 옆에 세웠고 카메라는 삼각대에 고정했다. 공을 세 번 떨어뜨려 가장 깨끗한 영상을 골랐다."></textarea>
     </div>
   </section>
 
@@ -431,12 +431,12 @@ function polyfit(ts,ys,deg){
   return coef.map(v=>Math.abs(v)<1e-9*big?0:v);
 }
 function poly(c,t){ let s=0; for(let i=c.length-1;i>=0;i--) s=s*t+c[i]; return s; }
-function termStr(c){
-  let out='';
+function termStr(c,ff){
+  ff=ff||fmt; let out='';
   for(let k=c.length-1;k>=0;k--){
     const v=c[k];
-    if(fmt(v)==='0') continue;
-    const neg=v<0, a=fmt(Math.abs(v));
+    if(ff(v)==='0') continue;
+    const neg=v<0, a=ff(Math.abs(v));
     const body=k===0?a:((a==='1'?'':a)+'t'+SUP[k]);
     if(!out) out=(neg?'−':'')+body; else out+=(neg?' − ':' + ')+body;
   }
@@ -940,6 +940,8 @@ function drawCalcFormula(g,x,y,size,color,fam,measure){
   if(!measure) g.textBaseline='top';
   return cx-x;
 }
+/* 문서용 계수 표기: 1 이상은 소수 둘째 자리까지, 작으면 유효숫자 3자리 */
+function docFmt(v){ const a=Math.abs(v); if(a>=1) return String(+a.toFixed(2)); return fmt(a,3); }
 /* ---------- PDF 저장 ---------- */
 const FONT='"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif';
 function svgToImage(svg){
@@ -1065,7 +1067,7 @@ async function makeReport(){
   if(y+420>PH-120){ newPage(); }
   text('2-2. 함수 모델링(다항식 회귀)',M,y,29,'#222',700); y+=48;
   text('영상 분석으로 얻은 데이터에 '+S.deg+'차 다항식 회귀를 한 결과입니다.',M,y,23,GRAY,400,'left',SERIF,true); y+=44;
-  const eq='s(t) = '+termStr(f.c.map(v=>v*k));
+  const eq='s(t) = '+termStr(f.c.map(v=>v*k),docFmt);
   let fs=34; g.font=font(fs,700,SERIF); while(g.measureText('위치함수  '+eq).width>IW&&fs>20){ fs-=2; g.font=font(fs,700,SERIF); }
   text('위치함수  '+eq,M,y,fs,'#111',700,'left',SERIF); y+=fs+14;
   text('R² = '+fmt(f.r2,4)+'      t: 초, s: '+su,M,y,22,GRAY,400,'left',SERIF); y+=50;
@@ -1156,7 +1158,7 @@ async function makeDocx(){
   body+=tbl(W3,rows)+par('',{after:80});
   body+=par(run('2-2. 함수 모델링(다항식 회귀)',{f:HF,b:true,sz:26}),{before:160,after:60});
   body+=par(run('영상 분석으로 얻은 데이터에 '+S.deg+'차 다항식 회귀를 한 결과입니다.',{i:true,c:'6B6B6B',sz:20}),{after:80});
-  body+=par(run('위치함수  s(t) = '+termStr(f.c.map(v=>v*k)),{b:true,sz:28}),{after:40});
+  body+=par(run('위치함수  s(t) = '+termStr(f.c.map(v=>v*k),docFmt),{b:true,sz:28}),{after:40});
   body+=par(run('R² = '+fmt(f.r2,4)+'      t: 초, s: '+su,{c:'6B6B6B',sz:20}),{after:160});
   body+=par(run('2차시 계산용 함수 (계수를 정수 또는 간단한 분수로 반올림):',{f:HF,b:true,sz:24}),{before:120,after:60});
   body+=par(run('위에서 구한 s(t)의 계수를 반올림하여 계산하기 쉬운 함수로 바꿔 적으세요. 3단계부터는 이 함수를 사용합니다.',{i:true,c:'6B6B6B',sz:20}),{after:100});
