@@ -185,7 +185,7 @@ body{margin:0}
     </div>
     <div>
       <label class="lbl" for="toolText" style="display:block;margin-bottom:6px">측정 도구 및 방법 (촬영 fps, 눈금 간격, 반복 횟수 등)</label>
-      <textarea id="toolText" class="fld" maxlength="1500" placeholder="어떤 물체를 촬영했는지, 촬영 fps, 기준 물체(눈금자 등)와 그 길이, 카메라 위치, 반복 횟수 등을 자세히 서술하세요.&#10;예) 스마트폰으로 240fps 슬로우모션 촬영, 1m 줄자를 공 옆에 세웠고 카메라는 삼각대에 고정했다. 공을 세 번 떨어뜨려 가장 깨끗한 영상을 골랐다."></textarea>
+      <textarea id="toolText" class="fld" maxlength="1500" placeholder="어떤 물체를 촬영했는지, 촬영 fps, 기준 물체(눈금자 등)와 그 길이, 카메라 위치, 반복 횟수 등을 자세히 서술하세요.&#10;예) 아이폰으로 240fps 슬로우모션 촬영, 1m 줄자를 공 옆에 세웠고 카메라는 삼각대에 고정했다. 공을 세 번 떨어뜨려 가장 깨끗한 영상을 골랐다."></textarea>
     </div>
   </section>
 
@@ -371,7 +371,12 @@ body{margin:0}
         <div class="row" style="margin-top:12px">
           <input id="stuId" type="text" placeholder="학번" aria-label="학번" maxlength="12" style="width:5.5em;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit"><input id="stuName" type="text" placeholder="이름" aria-label="이름" maxlength="12" style="width:5.5em;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit">
           <button class="btn primary" id="pdf" type="button" disabled title="함수가 추정되면 지금 화면의 결과를 PDF 파일로 저장합니다.">PDF로 저장</button>
+          <button class="btn" id="docx" type="button" disabled title="고쳐 쓸 수 있는 Word 파일입니다. 한컴오피스 한글에서도 열 수 있습니다.">Word로 저장</button>
+          <button class="btn small" id="shareAgain" type="button" hidden>저장하기</button>
           <span class="muted" id="pdfMsg" role="status" aria-live="polite"></span>
+        </div>
+        <div class="row" style="margin-top:2px">
+          <span class="muted" id="fnHint" style="font-size:12px"></span>
         </div>
       </section>
     </div>
@@ -840,7 +845,7 @@ function uiState(){
   $('#drawRef').disabled=!S.refKey||!(parseFloat($('#refLen').value)>0);
   $('#drawOrigin').disabled=!toolOk('origin'); $('#startMeas').disabled=!toolOk('measure');
   $('#reset').disabled=demo;
-  if(!$('#pdfMsg').dataset.busy) $('#pdf').disabled=!S.fit;
+  $('#pdf').disabled=!S.fit; $('#docx').disabled=!S.fit;
   document.querySelectorAll('#calcRow input').forEach(i=>{ i.disabled=!S.fit; });
   $('#undo').disabled=!S.hist.length;
   $('#delCur').disabled=demo||curIdx()<0;
@@ -1091,25 +1096,147 @@ async function makeReport(){
   for(const cv of pages) out.push({w:PW,h:PH,data:await canvasJpeg(cv)});
   return buildPdf(out);
 }
-async function savePdf(){
-  const b=$('#pdf'), msg=$('#pdfMsg');
-  if(!S.fit) return;
-  b.disabled=true; msg.textContent='PDF를 만드는 중…';
-  try{
-    const blob=await makeReport(), name='trajectory-result.pdf';
-    let dl=null;
-    try{ dl=(window.claude&&typeof window.claude.use==='function')?await window.claude.use('downloads'):null; }catch(e){ dl=null; }
-    if(dl){
-      try{ await dl.save({filename:name,data:blob}); msg.textContent='PDF를 저장했습니다.'; }
-      catch(e){ msg.textContent=(e&&e.code==='declined')?'저장을 취소했습니다.':'이 화면에서는 저장할 수 없습니다. 주소를 새 탭으로 열어 다시 시도하세요.'; }
-    } else {
-      const url=URL.createObjectURL(blob), a=document.createElement('a');
-      a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(()=>URL.revokeObjectURL(url),30000);
-      msg.textContent='PDF를 저장했습니다. (다운로드 폴더를 확인하세요)';
+/* ---------- Word(.docx) 저장 ---------- */
+const crcT=(()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0; } return t; })();
+function crc32(u){ let c=0xFFFFFFFF; for(let i=0;i<u.length;i++) c=crcT[(c^u[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function zipStore(files){
+  const enc=new TextEncoder(), parts=[], cen=[]; let off=0;
+  const u32=n=>[n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255], u16=n=>[n&255,(n>>>8)&255];
+  files.forEach(f=>{
+    const nm=enc.encode(f.name), d=typeof f.data==='string'?enc.encode(f.data):new Uint8Array(f.data), crc=crc32(d);
+    const h=new Uint8Array([0x50,0x4b,3,4,20,0,0,8,0,0,0,0,0x21,0,...u32(crc),...u32(d.length),...u32(d.length),...u16(nm.length),0,0]);
+    parts.push(h,nm,d);
+    cen.push(new Uint8Array([0x50,0x4b,1,2,20,0,20,0,0,8,0,0,0,0,0x21,0,...u32(crc),...u32(d.length),...u32(d.length),...u16(nm.length),0,0,0,0,0,0,0,0,0,0,0,0,...u32(off)]),nm);
+    off+=h.length+nm.length+d.length;
+  });
+  let cl=0; cen.forEach(c=>{ cl+=c.length; });
+  const end=new Uint8Array([0x50,0x4b,5,6,0,0,0,0,...u16(files.length),...u16(files.length),...u32(cl),...u32(off),0,0]);
+  return new Blob([...parts,...cen,end],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+}
+const xe=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+async function pngOf(canvas){ return new Promise((res,rej)=>canvas.toBlob(b=>b?b.arrayBuffer().then(res,rej):rej(new Error('이미지 변환 실패')),'image/png')); }
+async function makeDocx(){
+  const NAVY='1F3864', SOFT='E9F0FB', HF='맑은 고딕', BF='바탕';
+  const u=unit(), f=S.fit, k=u==='m'?100:1, su=u==='m'?'cm':'px', d=S.data.slice().sort((a,b)=>a.t-b.t);
+  const id=($('#stuId').value||'').trim(), nm=($('#stuName').value||'').trim();
+  const exp=$('#expSel').value, other=($('#expOther').value||'').trim();
+  const EXPS=[['낙하','자유낙하: 물체를 떨어뜨리며 촬영'],['던지기','자유낙하: 물체를 위로 던지며 촬영'],['경사면','경사면 굴리기: 판자 위에서 구슬/공을 굴리며 구간별 통과시간 측정'],['기타','기타 (직접 제안): '+(exp==='기타'&&other?other:'______________')]];
+  const rp=o=>'<w:rPr><w:rFonts w:ascii="'+(o.f||BF)+'" w:hAnsi="'+(o.f||BF)+'" w:eastAsia="'+(o.f||BF)+'"/>'+(o.b?'<w:b/>':'')+(o.i?'<w:i/>':'')+(o.c?'<w:color w:val="'+o.c+'"/>':'')+'<w:sz w:val="'+(o.sz||22)+'"/><w:szCs w:val="'+(o.sz||22)+'"/></w:rPr>';
+  const run=(t,o)=>'<w:r>'+rp(o||{})+'<w:t xml:space="preserve">'+xe(t)+'</w:t></w:r>';
+  const par=(inner,o)=>{ o=o||{}; return '<w:p><w:pPr>'+(o.keep?'<w:keepNext/>':'')+(o.pb?'<w:pageBreakBefore/>':'')+'<w:spacing w:before="'+(o.before||0)+'" w:after="'+(o.after==null?100:o.after)+'"/>'+(o.jc?'<w:jc w:val="'+o.jc+'"/>':'')+'</w:pPr>'+inner+'</w:p>'; };
+  const cell=(w,inner,o)=>{ o=o||{}; return '<w:tc><w:tcPr><w:tcW w:w="'+w+'" w:type="dxa"/>'+(o.fill?'<w:shd w:val="clear" w:color="auto" w:fill="'+o.fill+'"/>':'')+'<w:vAlign w:val="center"/></w:tcPr>'+inner+'</w:tc>'; };
+  const borders=(c,sz)=>'<w:tblBorders>'+['top','left','bottom','right','insideH','insideV'].map(n=>'<w:'+n+' w:val="single" w:sz="'+(sz||6)+'" w:space="0" w:color="'+c+'"/>').join('')+'</w:tblBorders>';
+  const tbl=(widths,rows,b)=>'<w:tbl><w:tblPr><w:tblW w:w="'+widths.reduce((a,c)=>a+c,0)+'" w:type="dxa"/>'+borders(b||'444444')+'<w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>'+widths.map(w=>'<w:gridCol w:w="'+w+'"/>').join('')+'</w:tblGrid>'+rows+'</w:tbl>';
+  const TW=9638;
+  const bar=(num,title,right,pb)=>{
+    const cp=(t,o)=>par(run(t,o),{after:0,jc:o.jc});
+    const rt=right?cell(1700,cp(right,{f:HF,b:true,sz:26,jc:'right'}),{fill:SOFT}):'';
+    return (pb?par('',{pb:true,after:0}):'')+tbl(right?[700,TW-2400,1700]:[700,TW-700],'<w:tr><w:trPr><w:trHeight w:val="560"/></w:trPr>'+cell(700,cp(num,{f:HF,b:true,c:'FFFFFF',sz:30,jc:'center'}),{fill:NAVY})+cell(right?TW-2400:TW-700,cp('  '+title,{f:HF,b:true,c:NAVY,sz:30}),{fill:SOFT})+rt+'</w:tr>',NAVY)+par('',{after:80});
+  };
+  const sp=(t,o)=>par(run(t,o),Object.assign({},o));
+  let body='';
+  /* 1쪽: 실험 설계 */
+  body+=tbl([TW],'<w:tr>'+cell(TW,par(run('학번: '+(id||'________')+'      이름: '+(nm||'________'),{f:HF,b:true,sz:24})+run('                 /  수행 영역 80점 (기본점수 20점 별도)',{f:HF,sz:21}),{after:40,before:40}),{fill:SOFT})+'</w:tr>',NAVY)+par('',{after:120});
+  body+=bar('1','실험 설계','',false);
+  body+=sp('선택한 실험의 종류와 측정 도구·방법을 적은 내용입니다.',{i:true,c:'6B6B6B',sz:21,after:120});
+  EXPS.forEach(o=>{ body+=par(run((exp===o[0]?'☑  ':'☐  ')+o[1],{b:exp===o[0],sz:23}),{after:60}); });
+  const expLab=exp==='기타'?(other||'기타'):((EXPS.find(o=>o[0]===exp)||[0,''])[1]);
+  body+=par(run('선택한 실험:  '+expLab,{f:HF,b:true,sz:24}),{before:200,after:200});
+  body+=par(run('측정 도구 및 방법 (촬영 fps, 눈금 간격, 반복 횟수 등):',{f:HF,b:true,sz:24}),{before:120,after:100});
+  ($('#toolText').value||'').split('\n').forEach(l=>{ body+=par(run(l,{sz:22}),{after:60}); });
+  /* 2쪽: 2단계 */
+  body+=bar('2','데이터 수집 및 함수 모델링','/ 12점',true);
+  body+=par(run('2-1. 데이터 수집',{f:HF,b:true,sz:26}),{after:60});
+  const bits=[S.mode==='demo'?'기본 세팅(표준 측정 데이터)입니다.':'영상에서 측정한 (시간, 위치) 데이터입니다.','기준: '+(S.scale?refName()+' '+fmtLen(S.scale.len):'없음 (단위: 픽셀)'),'위치: '+AXN[S.axis]]; if(S.speed!==1) bits.push('영상 배속 ×'+fmt(S.speed,3));
+  body+=par(run(bits.join(' · '),{i:true,c:'6B6B6B',sz:20}),{after:100});
+  const W3=[3200,3200,3238], hc=(w,t)=>cell(w,par(run(t,{f:HF,b:true,c:'FFFFFF',sz:22}),{after:0,jc:'center'}),{fill:NAVY});
+  let rows='<w:tr>'+hc(W3[0],'시간 t (초)')+hc(W3[1],'위치 s ('+su+')')+hc(W3[2],'비고')+'</w:tr>';
+  const nrow=Math.max(10,d.length);
+  for(let i=0;i<nrow;i++){ const q=d[i]; const c=(w,t)=>cell(w,par(t?run(t,{sz:22}):'',{after:0,jc:'center'})); rows+='<w:tr><w:trPr><w:trHeight w:val="480"/></w:trPr>'+c(W3[0],q?fmtT(q.t):'')+c(W3[1],q?(q.s*k).toFixed(1):'')+c(W3[2],'')+'</w:tr>'; }
+  body+=tbl(W3,rows)+par('',{after:80});
+  body+=par(run('2-2. 함수 모델링(다항식 회귀)',{f:HF,b:true,sz:26}),{before:160,after:60});
+  body+=par(run('영상 분석으로 얻은 데이터에 '+S.deg+'차 다항식 회귀를 한 결과입니다.',{i:true,c:'6B6B6B',sz:20}),{after:80});
+  body+=par(run('위치함수  s(t) = '+termStr(f.c.map(v=>v*k)),{b:true,sz:28}),{after:40});
+  body+=par(run('R² = '+fmt(f.r2,4)+'      t: 초, s: '+su,{c:'6B6B6B',sz:20}),{after:160});
+  body+=par(run('2차시 계산용 함수 (계수를 정수 또는 간단한 분수로 반올림):',{f:HF,b:true,sz:24}),{before:120,after:60});
+  body+=par(run('위에서 구한 s(t)의 계수를 반올림하여 계산하기 쉬운 함수로 바꿔 적으세요. 3단계부터는 이 함수를 사용합니다.',{i:true,c:'6B6B6B',sz:20}),{after:100});
+  // 계산용 함수: Word 수식(편집 가능)
+  const mr=(t)=>'<m:r><m:t xml:space="preserve">'+xe(t)+'</m:t></m:r>';
+  const tms=calcTerms();
+  if(tms.length){
+    let mm=mr('s(t)=');
+    tms.forEach((tm,i)=>{
+      const p=tm.p, bad=p.bad||!p.ok, neg=!bad&&p.neg;
+      if(i===0){ if(neg) mm+=mr('−'); } else mm+=mr(neg?'−':'+');
+      if(bad) mm+=mr(p.bad?String(p.raw):p.n+'/'+p.d);
+      else if(p.d) mm+='<m:f><m:num>'+mr(String(+p.n))+'</m:num><m:den>'+mr(String(+p.d))+'</m:den></m:f>';
+      else if(!(tm.k>=1&&+p.n===1)) mm+=mr(String(+p.n));
+      if(tm.k>=2) mm+='<m:sSup><m:e>'+mr('t')+'</m:e><m:sup>'+mr(String(tm.k))+'</m:sup></m:sSup>';
+      else if(tm.k===1) mm+=mr('t');
+    });
+    body+='<w:p><w:pPr><w:spacing w:before="60" w:after="60"/></w:pPr><m:oMath>'+mm+'</m:oMath></w:p>';
+    const pl=tms.map((tm,i)=>{ const p=tm.p, bad=p.bad||!p.ok; const sg=(!bad&&p.neg)?'−':'+'; const c=bad?(p.bad?p.raw:p.n+'/'+p.d):((tm.k>=1&&!p.d&&+p.n===1)?'':(p.d?String(+p.n)+'/'+String(+p.d):String(+p.n))); const tx=tm.k>=1?'t'+(tm.k>=2?'⁰¹²³⁴⁵'[tm.k]:''):''; return (i===0?(sg==='−'?'−':''):' '+sg+' ')+c+tx; }).join('');
+    body+=par(run('(글자로 보기) s(t) = '+pl,{c:'888888',sz:18}),{after:200});
+  } else body+=par('',{after:400});
+  body+=tbl([TW],'<w:tr>'+cell(TW,par(run('1차시는 여기까지입니다. 2차시(3~6단계)는 스마트폰·계산기 앱·AI 도구 등 전자기기 없이 교과서와 필기구만으로 진행합니다. 위에서 반올림한 함수만 사용하며, 기본 사칙연산 계산기는 선생님 안내에 따라 허용될 수 있습니다.',{sz:21}),{after:60,before:60}),{fill:'FFF8DC'})+'</w:tr>','E0B000');
+  /* 첨부 */
+  body+=bar('첨','영상 장면과 위치함수 그래프','',true);
+  const st=$('#stage'), cw0=st.width, ch0=st.height; const maxW=5600000, maxH=3300000; let ew=maxW, eh=Math.round(ew*ch0/cw0); if(eh>maxH){ eh=maxH; ew=Math.round(eh*cw0/ch0); }
+  const img1=await pngOf(st);
+  const svgI=await svgToImage($('#chart')), cc=document.createElement('canvas'); cc.width=svgI.w*2; cc.height=svgI.h*2; const cg=cc.getContext('2d'); cg.fillStyle='#fff'; cg.fillRect(0,0,cc.width,cc.height); cg.drawImage(svgI.img,0,0,cc.width,cc.height);
+  const img2=await pngOf(cc); const gw=5760000, gh=Math.round(gw*svgI.h/svgI.w);
+  const pic=(rid,n,w,h)=>'<w:p><w:pPr><w:spacing w:after="80"/><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="'+w+'" cy="'+h+'"/><wp:docPr id="'+n+'" name="그림 '+n+'"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="'+n+'" name="image'+n+'.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="'+rid+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+w+'" cy="'+h+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>';
+  body+=pic('rId10',1,ew,eh)+par(run('찍은 점과 기준선이 표시된 영상 장면',{i:true,c:'6B6B6B',sz:20}),{jc:'center',after:200});
+  body+=pic('rId11',2,gw,gh)+par(run('그래프의 위치(s) 단위는 '+u+' 입니다.'+(u==='m'?' (위 표와 함수식은 cm)':''),{i:true,c:'6B6B6B',sz:20}),{jc:'center'});
+  const NS='xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"';
+  const doc='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document '+NS+'><w:body>'+body+'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>';
+  const styles='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="'+BF+'" w:hAnsi="'+BF+'" w:eastAsia="'+BF+'"/><w:sz w:val="22"/><w:szCs w:val="22"/><w:lang w:val="en-US" w:eastAsia="ko-KR"/></w:rPr></w:rPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>';
+  const ct='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>';
+  const rels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';
+  const drels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId10" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image1.png"/><Relationship Id="rId11" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image2.png"/></Relationships>';
+  return zipStore([{name:'[Content_Types].xml',data:ct},{name:'_rels/.rels',data:rels},{name:'word/document.xml',data:doc},{name:'word/styles.xml',data:styles},{name:'word/_rels/document.xml.rels',data:drels},{name:'word/media/image1.png',data:img1},{name:'word/media/image2.png',data:img2}]);
+}
+const IS_IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function baseName(){
+  const clean=t=>String(t||'').replace(/[\\/:*?"<>|\u0000-\u001f]/g,'').replace(/\s+/g,'').trim();
+  const id=clean($('#stuId').value), nm=clean($('#stuName').value);
+  return [id,nm].filter(Boolean).join('_')||'trajectory-result';
+}
+function updFn(){ const e=$('#fnHint'); if(e) e.textContent='저장 파일 이름: '+baseName()+'.pdf / .docx'; }
+let pendingShare=null;
+async function deliver(blob,name,msg,label){
+  const again=$('#shareAgain'); again.hidden=true; pendingShare=null;
+  let dl=null;
+  try{ dl=(window.claude&&typeof window.claude.use==='function')?await window.claude.use('downloads'):null; }catch(e){ dl=null; }
+  if(dl){
+    try{ await dl.save({filename:name,data:blob}); msg.textContent=label+' 파일을 저장했습니다.'; }
+    catch(e){ msg.textContent=(e&&e.code==='declined')?'저장을 취소했습니다.':'이 화면에서는 저장할 수 없습니다. 주소를 새 탭으로 열어 다시 시도하세요.'; }
+    return;
+  }
+  const file=new File([blob],name,{type:blob.type});
+  const canShare=IS_IOS&&navigator.share&&navigator.canShare&&navigator.canShare({files:[file]});
+  if(canShare){
+    try{ await navigator.share({files:[file],title:name}); msg.textContent='공유 창에서 「파일에 저장」을 눌러 저장 위치를 고르세요. 이미 저장했다면 파일 앱에서 찾을 수 있습니다.'; return; }
+    catch(e){
+      if(e&&e.name==='AbortError'){ msg.textContent='공유 창을 닫았습니다. 저장하려면 「저장하기」를 다시 누르세요.'; }
+      else msg.textContent='아래 「저장하기」를 눌러 공유 창을 여세요.';
+      pendingShare=file; again.hidden=false; return;
     }
-  }catch(e){ msg.textContent='PDF를 만들지 못했습니다: '+(e&&e.message||e); }
-  b.disabled=!S.fit;
+  }
+  const url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+  msg.textContent=IS_IOS?label+' 파일을 만들었습니다. Safari 주소창 옆의 다운로드 표시를 눌러 확인하세요. (파일 앱 > 다운로드). 카카오톡·클래스룸 안의 화면에서는 저장되지 않으니 Safari로 열어 주세요.':label+' 파일을 저장했습니다. (다운로드 폴더를 확인하세요)';
+}
+async function saveDoc(kind){
+  const msg=$('#pdfMsg'), bs=[$('#pdf'),$('#docx')];
+  if(!S.fit) return;
+  bs.forEach(b=>{ b.disabled=true; }); msg.textContent=(kind==='docx'?'Word':'PDF')+' 파일을 만드는 중…';
+  try{
+    if(kind==='docx') await deliver(await makeDocx(),baseName()+'.docx',msg,'Word');
+    else await deliver(await makeReport(),baseName()+'.pdf',msg,'PDF');
+  }catch(e){ msg.textContent='파일을 만들지 못했습니다: '+(e&&e.message||e); }
+  bs.forEach(b=>{ b.disabled=!S.fit; });
 }
 
 /* ---------- 영상 ---------- */
@@ -1204,7 +1331,14 @@ bindSeg('#speedSeg','speed',v=>{ S.speed=+v; $('#speed').value=v; renderAll(); }
 $('#speed').addEventListener('input',e=>{ const v=parseFloat(e.target.value); if(v>0){ S.speed=v; renderAll(); } });
 $('#drawRef').addEventListener('click',()=>{ setTool('scale'); $('#stageBox').scrollIntoView({block:'nearest'}); });
 $('#drawOrigin').addEventListener('click',()=>setTool('origin'));
-$('#pdf').addEventListener('click',savePdf);
+$('#pdf').addEventListener('click',()=>saveDoc('pdf'));
+$('#docx').addEventListener('click',()=>saveDoc('docx'));
+$('#shareAgain').addEventListener('click',async()=>{
+  if(!pendingShare) return; const msg=$('#pdfMsg');
+  try{ await navigator.share({files:[pendingShare],title:pendingShare.name}); msg.textContent='공유 창에서 「파일에 저장」을 눌러 저장 위치를 고르세요.'; $('#shareAgain').hidden=true; pendingShare=null; }
+  catch(e){ msg.textContent=(e&&e.name==='AbortError')?'공유 창을 닫았습니다.':'이 브라우저에서는 공유 창을 열 수 없습니다. Safari로 열어 다시 시도하세요.'; }
+});
+['#stuId','#stuName'].forEach(i=>$(i).addEventListener('input',updFn)); updFn();
 let defArm=false, defTimer=0;
 $('#useDefault').addEventListener('click',()=>{
   const msg=$('#defaultMsg'), btn=$('#useDefault');
